@@ -260,22 +260,107 @@ When a company changes its segment reporting structure mid-history:
 ## Phase 5 — Build the Model
 
 With structure approved, key schema confirmed, and restatement rules understood,
-repurpose the template:
+repurpose the template.
 
+The repurposing process is modify-in-place, not rebuild-from-scratch:
 1. Copy `[template file]` to `[TICKER]/Models/[TICKER] Model.xlsx`
 2. Load the copy — never modify the template directly
-3. Apply changes following the skill file conventions exactly:
-   - Retain all group-level rows unchanged
-   - Replace segment-level rows with the agreed segment structure
-   - Replace the Operating Metrics section with the agreed KPIs
-   - Map each reported line item to the most semantically appropriate dedicated row
-   - Route to Other rows only where no dedicated row is a reasonable match
-   - Flag any material items that warrant a new dedicated row — confirm with user
-     before adding
-4. Enter all historical actuals as blue hardcoded values
-5. Wire all forecast formulas — use Excel formulas referencing assumption rows,
-   never Python-calculated values hardcoded by openpyxl
-6. Wire macro indicator linkages per the confirmed relationships from Phase 2b
+3. Modify only the rows that need to change — retain all other rows, their
+   formatting, and their formulas exactly as they exist in the template
+4. Consult the loaded skill file's Template Preservation Method section for
+   which rows to retain and which to replace
+
+The repurposing method is INSERT and REPLACE, not clear and rebuild. The
+group-level rows (subtotals, headers, ratios, analytical rows) must remain in
+place — never delete them, never recreate them. To add new segment rows, insert
+blank rows directly above the relevant subtotal row, then populate the new rows.
+To remove old segment rows that do not apply to the new company, delete them.
+Then update the subtotal formula's range to cover the new segment rows. This
+preserves all formatting, borders, and formulas on the retained rows
+automatically, because they shift down with the insertion rather than being
+rebuilt from scratch.
+
+Apply changes following the skill file conventions exactly:
+- Retain all group-level rows unchanged — they stay in their original position
+  (shifted only by insertions above them) with their original formatting and
+  formulas intact
+- Insert new segment rows above the group subtotal rows for the agreed segments
+- Delete old segment rows that do not apply to the new company
+- Update subtotal formulas to reference the new segment row range
+- Replace the Operating Metrics section with the agreed KPIs
+- Map each reported line item to the most semantically appropriate dedicated row
+- Route to Other rows only where no dedicated row is a reasonable match
+- Flag any material items that warrant a new dedicated row — confirm with user
+  before adding
+- When inserting new rows, copy formatting from an adjacent template row
+  of the same type
+
+Enter all historical actuals following the conventions documented in the loaded
+skill file — this includes the color coding for actuals, the method for deriving
+sub-periods (e.g. second-half values), and any cross-sheet formula patterns the
+skill file specifies.
+
+Enter actuals for ALL available periods, including the most recent interim if data
+exists in the source documents. Check all downloaded reports for interim data before
+concluding that a period has no data available.
+
+If the skill file documents a Sheet Zone Architecture (e.g. a summary zone and a
+separate forecast driver zone on the same sheet), build the forecast following that
+architecture. Build the driver zone first, then wire the summary zone's forecast
+cells to reference the driver zone. Do not flatten the sheet into a single zone.
+
+Place forecast assumption inputs following the skill file's Assumption Input
+Placement convention.
+
+The following template sections must be retained in their entirety unless the skill
+file explicitly marks them for replacement:
+- Cash Flow section (including all analytical rows like Gross OCF, Cash Conversion,
+  Operating FCF)
+- Balance Sheet section (including all roll-forward mechanics)
+- Return metrics section (ROIC, Invested Capital, etc.)
+- Valuation methods (DCF, SOTP, or whatever the template contains)
+
+Consult the loaded skill file for the exact row structure, formula linkages, and
+projection methods for each of these sections. Preserve them; do not restructure.
+
+Wire all forecast formulas — use Excel formulas referencing assumption rows,
+never Python-calculated values hardcoded by openpyxl.
+
+Wire macro indicator linkages per the confirmed relationships from Phase 2b.
+
+### No hidden assumptions
+
+Every forecast assumption (growth rate, margin percentage, ratio, rate) must
+appear on its own dedicated row with assumption input formatting (as documented
+in the skill file — typically maroon font). No forecast formula may contain a
+hardcoded assumption value. Where a line item is forecast using a growth rate
+applied to PCP, create a dedicated assumption row (e.g. "OpEx Growth") directly
+below the item it drives, and have the item's forecast formula reference that
+row: `=PCP_cell * (1 + Growth_cell)`. This applies to all forecast items
+including revenue drivers, cost growth, margin assumptions, and rate assumptions.
+
+If the skill file documents a specific forecast pattern for an item (e.g.
+interest = balance × rate, tax = PBT × tax rate, capex = capex/sales % ×
+revenue), that pattern must be followed exactly. The historical rate or ratio
+must be computed from actuals and populated in the assumption row. The forecast
+assumption row flatlines from the last actual. The driven row uses an Excel
+formula referencing the assumption row — never the reverse.
+
+### Implement the agreed Phase 3b forecast structure
+
+The forecast driver structure agreed with the user in Phase 3b is mandatory —
+it is not a suggestion and must not be simplified or replaced with a generic
+escalator. The segment forecast driver sections must implement the specific
+revenue build, cost build, and EBITDA derivation that was approved. For example,
+if Phase 3b agreed a revenue build of "Restaurant Count × AUV → Network Sales →
+Corp Mix → Corp Revenue", then the segment driver section must contain rows for
+each of those drivers with the appropriate formulas connecting them.
+
+The default forecast assumptions below are applied to the individual driver
+assumption rows WITHIN the agreed Phase 3b structure — they are not a substitute
+for that structure. For example, if the agreed structure includes an "AUV Growth"
+driver, the default trend rate is applied to that AUV Growth row, not directly
+to the revenue line.
 
 ### Forecast methodology
 
@@ -284,15 +369,21 @@ Apply these defaults unless the user has specified otherwise:
 **Revenue and operating items (P&L lines above interest):**
 - Extrapolate using a 3-year trend where 3 years of history exist
 - Where fewer than 3 years exist, use the latest full-year trend
+- Apply trend rates to the individual driver assumption rows within the
+  Phase 3b agreed forecast structure
 - Preserve seasonality — escalate forecasts using the prior corresponding period
   (pcp) as the base, not the prior sequential period
-- Forecasts use Excel formulas referencing pcp cells, not hardcoded growth rates
-- Default nominal price escalator: 2.5% per annum
+- Forecasts use Excel formulas referencing assumption rows, not hardcoded
+  growth rates
 - Where macro indicators are confirmed and wired, the macro series drives the
-  relevant assumption rows rather than a flat escalator
+  relevant assumption rows rather than a trend rate
 
 **All other inputs (interest rates, tax rate, BS ratios, payout ratio):**
-- Hold constant inline with the most recent corresponding period (pcp)
+- Compute the historical rate or ratio from actuals and populate it in the
+  assumption row for every actual period
+- Flatline the assumption row from the most recent corresponding period (pcp)
+- Wire the driven row to reference the assumption row using the pattern
+  documented in the skill file (e.g. interest = balance × rate)
 
 ---
 
@@ -302,6 +393,14 @@ Run all checks and report results before presenting the model to the user.
 
 ### 6a. Formula errors
 Zero formula errors (#REF!, #DIV/0!, #VALUE!, #N/A) across all sheets.
+
+### 6a2. Retained row completeness
+Cross-check every section of the model against the skill file's row-by-row
+structure tables (CF Section Structure, BS Projection Methods, Return Metrics,
+etc.). Verify that every row documented in those tables exists in the built
+model with a populated formula. Flag any missing rows — particularly analytical
+and ratio rows (e.g. OCF Growth, Cash Conversion, FCF Yield) that should have
+been retained from the template.
 
 ### 6b. P&L cascade (each historical year)
 - Total Revenue = sum of segment revenues
@@ -342,6 +441,18 @@ BS Check row = 0 for every column (tolerance ±0.2).
 - Confirm every wired macro row references the correct series and lag
 - Confirm assumption rows for coefficient and exposure proportion are populated
 - Confirm no macro relationship was hardcoded rather than formula-driven
+
+### 6i. No hidden assumptions
+- Scan every forecast formula for hardcoded numeric assumptions (e.g. `*1.025`,
+  `*0.3`, `+5`). Every such value must instead reference a dedicated assumption
+  row. Flag any formula that contains a hardcoded assumption.
+
+### 6j. Phase 3b structure implementation
+- Verify that the segment forecast driver sections implement the exact structure
+  agreed in Phase 3b — every driver row that was agreed must exist and be
+  populated with formulas for all forecast periods
+- Verify that summary/dependent zone forecast cells reference the driver section
+  outputs, not independent forecast logic
 
 ---
 
