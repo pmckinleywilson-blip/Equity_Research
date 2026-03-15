@@ -50,6 +50,7 @@ Each ticker folder contains:
 - Keep `context-log.md` under 100 lines — summarise and compress older entries rather than appending indefinitely
 - Never delete entries from Key Decisions — summarise them if space is needed
 - When creating a new company folder, copy `.claude/references/context-log-template.md` into the new company folder as `context-log.md`
+- If a company folder does not contain a `context-log.md`, create one immediately using the template at `.claude/references/context-log-template.md` before proceeding with any work
 
 ## Data Accuracy
 
