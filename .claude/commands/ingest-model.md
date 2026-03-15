@@ -52,6 +52,23 @@ Load the uploaded Excel file fresh. Work through every sheet systematically:
 - Note formatting beyond color — which rows are bold? Which have borders? Identify the
   pattern. Note header row conventions (e.g. row 2 zone labels, row 3 period label fill
   colors, any other header formatting patterns observed).
+- Note number format conventions — for each sheet, examine the `number_format` property
+  on data cells. Document the exact Excel format string used for: (a) monetary data
+  cells (e.g. `#,##0.0`), (b) percentage cells (e.g. `0.0%`), (c) per-share cells,
+  (d) count/volume cells, (e) ratio cells (e.g. `0.0x`). If different sheets use
+  different formats for the same type of data, document each separately.
+- Note zone label positioning — if the model uses zone labels (e.g. "Actual" and
+  "Forecast" labels on row 2), document where each label is positioned relative to
+  the data columns. Determine the rule: does the label always appear at the first
+  data column of that zone? Capture the exact column relationship.
+- Note blank row conventions — are there blank spacer rows between sections? If so,
+  how many and where? Document the pattern (e.g. "one blank row between each major
+  section, no blank rows within a section"). If there are no spacer rows, state this.
+- Where multiple sheets share similar row structures (e.g. a sub-period sheet and an
+  annual sheet both containing P&L line items), note whether the line items, their
+  order, and their Column A keys are identical across sheets. Document any structural
+  correspondence observed — this is important for ensuring consistency when
+  repurposing.
 - Note sign conventions from the actual data values
 - Note formula patterns — how do sheets reference each other?
 - If sub-annual periods exist, examine how each sub-period's values are determined:
@@ -166,7 +183,17 @@ headers where relevant, omitting any that do not apply:
 - Row Lookup System (document the key format and lookup method observed, with a
   representative formula)
 - Color Coding (only if the model uses a consistent color convention)
-- Row Formatting Rules (bold/border pattern, header row conventions)
+- Row Formatting Rules (bold/border pattern, header row conventions, per-section
+  formatting if different sections follow different patterns)
+- Number Format Conventions (document the exact Excel number_format string for each
+  cell type — monetary, percentage, per-share, count — per sheet if they differ)
+- Zone Label Positioning (document the rule for where zone labels appear relative to
+  data columns — e.g. "the Forecast label is always placed at the first forecast
+  data column")
+- Blank Row Convention (document the spacer row pattern between sections)
+- Cross-Sheet Structural Correspondence (only if multiple sheets share the same row
+  structure — document which sheets must have identical line items and keys, and the
+  rule that changes to one must be reflected in the other)
 - Sign Conventions
 - Cross-Sheet Formula Rules (only if sheets reference each other)
 - Sub-Period Derivation (document the exact formula pattern observed for deriving

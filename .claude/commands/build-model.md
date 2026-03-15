@@ -280,6 +280,18 @@ preserves all formatting, borders, and formulas on the retained rows
 automatically, because they shift down with the insertion rather than being
 rebuilt from scratch.
 
+Apply the modify-in-place process to **every sheet** in the workbook, not just the
+primary sheet. For each sheet, consult the skill file's Template Preservation Method
+for that sheet's retain/replace map. Do not treat any sheet as secondary — the same
+level of care for row structure, formatting, and formula integrity applies to all
+sheets equally.
+
+If the skill file documents cross-sheet structural correspondence (e.g. two sheets
+sharing the same P&L line items and keys), ensure that every row added to or removed
+from one sheet is also added to or removed from the corresponding sheet. The line
+items, their order, and their Column A keys must remain consistent across
+corresponding sheets.
+
 Apply changes following the skill file conventions exactly:
 - Retain all group-level rows unchanged — they stay in their original position
   (shifted only by insertions above them) with their original formatting and
@@ -294,6 +306,15 @@ Apply changes following the skill file conventions exactly:
   before adding
 - When inserting new rows, copy formatting from an adjacent template row
   of the same type
+- Apply number formats from the template to all new and modified cells — consult
+  the skill file's Number Format Conventions for the exact format strings. Do not
+  leave cells with the default "General" format
+- After adjusting columns for the number of actual periods, verify that zone labels
+  (e.g. "Actual", "Forecast") on header rows are positioned at the correct columns
+  per the skill file's Zone Label Positioning convention
+- After all row insertions and deletions, verify blank row spacing matches the
+  template convention documented in the skill file. Remove any orphaned blank rows
+  created by the delete process
 
 Enter all historical actuals following the conventions documented in the loaded
 skill file — this includes the color coding for actuals, the method for deriving
@@ -394,6 +415,20 @@ Run all checks and report results before presenting the model to the user.
 ### 6a. Formula errors
 Zero formula errors (#REF!, #DIV/0!, #VALUE!, #N/A) across all sheets.
 
+Since openpyxl cannot evaluate formulas, perform structural validation:
+- For every INDEX/MATCH formula, extract the lookup key and confirm it exists
+  in Column A of the target sheet
+- For every INDEX/MATCH formula that matches on period labels, confirm the
+  period label string (e.g. "1H26", "FY26E") exists in the target sheet's
+  header row
+- For every cell reference in a formula (e.g. `G141`, `H56`), confirm the
+  referenced cell is not empty and the row is within the data range
+- Flag any formula referencing a row or column outside the used range
+- After the model is saved, open it with openpyxl in data_only mode (or use
+  another method) to check for cells that would evaluate to error values.
+  If this is not possible, document the limitation and instruct the user to
+  check for errors when opening in Excel
+
 ### 6a2. Retained row completeness
 Cross-check every section of the model against the skill file's row-by-row
 structure tables (CF Section Structure, BS Projection Methods, Return Metrics,
@@ -453,6 +488,26 @@ BS Check row = 0 for every column (tolerance ±0.2).
   populated with formulas for all forecast periods
 - Verify that summary/dependent zone forecast cells reference the driver section
   outputs, not independent forecast logic
+
+### 6k. Formatting integrity
+- Verify all actual data cells have the correct font color (per skill file Color
+  Coding section)
+- Verify all forecast assumption cells have the correct font color
+- Verify number formats on data cells match the skill file's Number Format
+  Conventions — no cells should have the default "General" format in data columns
+- Verify zone labels on header rows are at the correct column positions per the
+  skill file's Zone Label Positioning convention
+- Verify no orphaned blank rows exist between sections (compare against the
+  skill file's Blank Row Convention)
+- Verify subtotal rows have bold font and top/bottom borders per the skill file's
+  Row Formatting Rules
+
+### 6l. Cross-sheet structural correspondence
+- If the skill file documents structural correspondence between sheets (e.g. two
+  sheets sharing the same P&L line items), extract the Column A keys from both
+  sheets' corresponding sections and confirm they are identical in content and
+  order
+- Flag any key present on one sheet but missing from the other
 
 ---
 
