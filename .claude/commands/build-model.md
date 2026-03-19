@@ -148,10 +148,11 @@ into the model.
 **Step 3 — Wire into the model**
 
 Once the relationship is confirmed, build the macro linkage as follows:
-- Store the macro series in a dedicated input section on the Segments sheet,
-  clearly labelled with the series name and source
+- Store the macro series in a dedicated input section on the appropriate sheet
+  (per the skill file's Sheet Architecture), clearly labelled with the series
+  name and source
 - Create an assumption row for each relationship parameter (lag periods, coefficient,
-  exposure proportion) as maroon input cells
+  exposure proportion) using the assumption input formatting from the skill file
 - Wire the affected forecast rows to reference the macro series via these assumption
   rows — never hardcode the relationship
 - Where a lag applies, use an OFFSET or INDEX formula to reference the lagged period
@@ -212,22 +213,79 @@ Ask the user:
 Do not proceed to building until the user explicitly approves the full structure
 including all macro relationships.
 
-### 3c. Build the Column A key schema
+### 3b2. Write the agreed forecast structure to a file
 
-Based on the approved segment structure, generate the complete Column A key list
-following the conventions in the loaded skill file. The key schema serves two
-purposes: INDEX/MATCH lookups, and data continuity across reporting changes and
-restatements. Present the full key list to the user for confirmation before
-building any sheet.
+Once the user approves the Phase 3b structure, write it to a structured file
+at `[TICKER]/forecast-structure.yml` BEFORE proceeding to Phase 5. This file
+is the authoritative specification for the forecast build — Phase 5 must read
+it and implement it exactly.
+
+The file must contain, for each segment:
+- The exact revenue build chain (e.g. "Restaurant Count by Format × AUV by
+  Format → Network Sales → Corp Share → Corp Revenue")
+- Each driver row: name, type (KPI / assumption / calculated), and the
+  formula logic connecting it to other rows
+- The cost/margin build (e.g. "Corp Margin % × Corp Revenue → Corp Margin $")
+- The EBITDA derivation (e.g. "Corp Margin + Franchise Revenue + G&A →
+  Segment EBITDA")
+- Which rows are assumption inputs (maroon) vs calculated vs KPI
+
+And for the group level:
+- How segment EBITDA maps to statutory EBITDA (the bridge)
+- Whether expense lines are independently forecast or back-solved residuals
+- D&A, interest, and tax forecast methods
+
+Use YAML format. Example structure:
+
+```yaml
+segments:
+  Australia:
+    revenue_build:
+      - row: DT Restaurant Count
+        type: KPI
+        formula: prior + New DT Openings
+      - row: New DT Openings
+        type: assumption
+        formula: flatline from PCP
+      - row: DT AUV
+        type: KPI
+        formula: prior × (1 + DT AUV Growth)
+      - row: DT AUV Growth
+        type: assumption
+        formula: flatline from PCP
+      - row: AU Network Sales
+        type: calculated
+        formula: DT Count × DT AUV + Strip Count × Strip AUV + ...
+      # ... etc
+    ebitda_derivation:
+      - row: AU Segment EBITDA
+        type: calculated
+        formula: Corp Margin + Franchise Revenue + G&A
+group_level:
+  ebitda_approach: segment_driven
+  expense_method: back-solved residual
+```
+
+Confirm to the user that the file has been written. This file will be read
+by Phase 5 to ensure the agreed structure is implemented exactly.
+
+### 3c. Build the row identification schema
+
+If the skill file documents a row identification system (e.g. row keys, named
+ranges, or another method), generate the complete set of row identifiers for the
+new company following the conventions in the skill file. These identifiers serve
+two purposes: cross-sheet lookups, and data continuity across reporting changes
+and restatements. Present the full identifier list to the user for confirmation
+before building any sheet.
 
 Rules:
-- Follow the prefix conventions exactly as defined in the skill file
-- Every row that will appear in the model must have a key
-- Segment-level keys must reflect the agreed segment names
-- Group-level keys must match the template exactly — do not rename them
-- KPI rows use the `KPI-` prefix
-- Where a company has changed its segment structure, define keys for both old
-  and new structures per the restatement rules below
+- Follow the identifier conventions exactly as defined in the skill file
+  (prefix format, naming patterns, placement column)
+- Every row that will appear in the model must have an identifier
+- Segment-level identifiers must reflect the agreed segment names
+- Group-level identifiers must match the template exactly — do not rename them
+- Where a company has changed its segment structure, define identifiers for both
+  old and new structures per the restatement rules below
 
 ---
 
@@ -247,8 +305,8 @@ When a company restates a prior year figure in a more recent report:
 
 When a company changes its segment reporting structure mid-history:
 - Never overwrite prior years with the new segment structure
-- Preserve prior segment rows and their Column A keys exactly
-- Add new rows with new Column A keys for the new structure
+- Preserve prior segment rows and their row identifiers exactly
+- Add new rows with new row identifiers for the new structure
 - Overlapping old and new segment rows in transition years is intentional and correct
 - Group-level totals must not double-sum — use period-conditional logic to switch
   the summation basis at the restructure date
@@ -261,6 +319,12 @@ When a company changes its segment reporting structure mid-history:
 
 With structure approved, key schema confirmed, and restatement rules understood,
 repurpose the template.
+
+**Before writing any formulas**, read the agreed forecast structure from
+`[TICKER]/forecast-structure.yml`. This file is the authoritative specification
+for the segment forecast drivers. Every driver row listed in this file must
+exist in the model with the formula logic specified. Do not simplify, skip,
+or replace any part of it with a generic growth rate.
 
 The repurposing process is modify-in-place, not rebuild-from-scratch:
 1. Copy `[template file]` to `[TICKER]/Models/[TICKER] Model.xlsx`
@@ -289,62 +353,29 @@ sheets equally.
 If the skill file documents cross-sheet structural correspondence (e.g. two sheets
 sharing the same P&L line items and keys), ensure that every row added to or removed
 from one sheet is also added to or removed from the corresponding sheet. The line
-items, their order, and their Column A keys must remain consistent across
+items, their order, and their row identifiers must remain consistent across
 corresponding sheets.
 
-Apply changes following the skill file conventions exactly:
-- Retain all group-level rows unchanged — they stay in their original position
-  (shifted only by insertions above them) with their original formatting and
-  formulas intact
-- Insert new segment rows above the group subtotal rows for the agreed segments
-- Delete old segment rows that do not apply to the new company
-- Update subtotal formulas to reference the new segment row range
-- Replace the Operating Metrics section with the agreed KPIs
-- Map each reported line item to the most semantically appropriate dedicated row
-- Route to Other rows only where no dedicated row is a reasonable match
-- Flag any material items that warrant a new dedicated row — confirm with user
-  before adding
-- When inserting new rows, copy formatting from an adjacent template row
-  of the same type
-- Apply number formats from the template to all new and modified cells — consult
-  the skill file's Number Format Conventions for the exact format strings. Do not
-  leave cells with the default "General" format
-- After adjusting columns for the number of actual periods, verify that zone labels
-  (e.g. "Actual", "Forecast") on header rows are positioned at the correct columns
-  per the skill file's Zone Label Positioning convention
-- After all row insertions and deletions, verify blank row spacing matches the
-  template convention documented in the skill file. Remove any orphaned blank rows
-  created by the delete process
+When inserting new rows, copy formatting from an adjacent template row of the
+same type. When mapping company line items to template rows, use the most
+semantically appropriate dedicated row. Route to Other rows only where no
+dedicated row is a reasonable match. Flag any material items that warrant a new
+dedicated row — confirm with user before adding.
 
-Enter all historical actuals following the conventions documented in the loaded
-skill file — this includes the color coding for actuals, the method for deriving
-sub-periods (e.g. second-half values), and any cross-sheet formula patterns the
-skill file specifies.
+Follow the loaded skill file for all template-specific conventions:
+- Color coding, number formats, zone label positioning, blank row spacing
+- Sheet architecture and any cross-sheet structural correspondence
+- Cross-sheet formula patterns and sub-period derivation methods
+- Assumption input placement and formatting
+- CF, BS, and return metric row structure, formula linkages, and projection
+  methods — preserve these sections; do not restructure
+- Valuation method structure and formulas
 
-Enter actuals for ALL available periods, including the most recent interim if data
-exists in the source documents. Check all downloaded reports for interim data before
-concluding that a period has no data available.
+Enter all historical actuals for ALL available periods, including the most
+recent interim. Check all downloaded reports for interim data before concluding
+that a period has no data available.
 
-If the skill file documents a Sheet Zone Architecture (e.g. a summary zone and a
-separate forecast driver zone on the same sheet), build the forecast following that
-architecture. Build the driver zone first, then wire the summary zone's forecast
-cells to reference the driver zone. Do not flatten the sheet into a single zone.
-
-Place forecast assumption inputs following the skill file's Assumption Input
-Placement convention.
-
-The following template sections must be retained in their entirety unless the skill
-file explicitly marks them for replacement:
-- Cash Flow section (including all analytical rows like Gross OCF, Cash Conversion,
-  Operating FCF)
-- Balance Sheet section (including all roll-forward mechanics)
-- Return metrics section (ROIC, Invested Capital, etc.)
-- Valuation methods (DCF, SOTP, or whatever the template contains)
-
-Consult the loaded skill file for the exact row structure, formula linkages, and
-projection methods for each of these sections. Preserve them; do not restructure.
-
-Wire all forecast formulas — use Excel formulas referencing assumption rows,
+Wire all forecast formulas as Excel formulas referencing assumption rows —
 never Python-calculated values hardcoded by openpyxl.
 
 Wire macro indicator linkages per the confirmed relationships from Phase 2b.
@@ -353,7 +384,7 @@ Wire macro indicator linkages per the confirmed relationships from Phase 2b.
 
 Every forecast assumption (growth rate, margin percentage, ratio, rate) must
 appear on its own dedicated row with assumption input formatting (as documented
-in the skill file — typically maroon font). No forecast formula may contain a
+in the skill file's Color Coding section). No forecast formula may contain a
 hardcoded assumption value. Where a line item is forecast using a growth rate
 applied to PCP, create a dedicated assumption row (e.g. "OpEx Growth") directly
 below the item it drives, and have the item's forecast formula reference that
@@ -382,6 +413,21 @@ assumption rows WITHIN the agreed Phase 3b structure — they are not a substitu
 for that structure. For example, if the agreed structure includes an "AUV Growth"
 driver, the default trend rate is applied to that AUV Growth row, not directly
 to the revenue line.
+
+### When segment EBITDA is the primary forecast
+
+If the agreed Phase 3b structure drives EBITDA at the segment level (e.g. via
+segment margins and G&A costs), then statutory expense lines are determined by
+the segment forecast — they are not independently forecast. The correct approach:
+- Segment EBITDA is the primary forecast output (from the agreed drivers)
+- Statutory EBITDA is derived via the bridge (Segment EBITDA ± adjustments,
+  per the skill file)
+- Total expenses = Total Revenue & Other Income − COGS − Statutory EBITDA
+  (back-solved from the segment-driven EBITDA)
+- Individual expense lines may be split proportionally as memo items but must
+  not have independent forecast assumptions that conflict with the segment EBITDA
+- Do not create growth assumption rows for expense lines that are residuals of
+  the segment build
 
 ### Forecast methodology
 
@@ -416,13 +462,13 @@ Run all checks and report results before presenting the model to the user.
 Zero formula errors (#REF!, #DIV/0!, #VALUE!, #N/A) across all sheets.
 
 Since openpyxl cannot evaluate formulas, perform structural validation:
-- For every INDEX/MATCH formula, extract the lookup key and confirm it exists
-  in Column A of the target sheet
-- For every INDEX/MATCH formula that matches on period labels, confirm the
-  period label string (e.g. "1H26", "FY26E") exists in the target sheet's
-  header row
-- For every cell reference in a formula (e.g. `G141`, `H56`), confirm the
-  referenced cell is not empty and the row is within the data range
+- For every cross-sheet lookup formula, extract the lookup value and confirm
+  it exists on the target sheet in the location the formula expects (per the
+  skill file's Row Lookup System and Cross-Sheet Formula Rules)
+- For every cross-sheet lookup that matches on period labels, confirm the
+  constructed period label exists in the target sheet's header row
+- For every direct cell reference in a formula, confirm the referenced cell
+  is not empty and the row is within the data range
 - Flag any formula referencing a row or column outside the used range
 - After the model is saved, open it with openpyxl in data_only mode (or use
   another method) to check for cells that would evaluate to error values.
@@ -462,15 +508,22 @@ the historical range:
 BS Check row = 0 for every column (tolerance ±0.2).
 
 ### 6f. Cross-sheet formula integrity
-- Annual forecast flow items = Segments 1H + 2H
-- Annual forecast point-in-time items = Segments 2H only
-- No direct cell references across sheets — all cross-sheet lookups use INDEX/MATCH
+Verify cross-sheet formulas follow the patterns documented in the skill file's
+Cross-Sheet Formula Rules section:
+- Forecast flow items aggregate sub-periods correctly (per the skill file's
+  sub-period structure — e.g. summing halves, quarters, or whatever the
+  template uses)
+- Forecast point-in-time items reference the correct sub-period only
+- Cross-sheet lookup method matches the skill file (no ad-hoc direct cell
+  references where the skill file specifies a lookup-based method)
 
 ### 6g. Restatement and restructure integrity
 - Where a segment restructure exists, verify group totals do not double-sum
   in any column
-- Confirm Column A keys are unique across the workbook
-- Confirm all keys referenced in INDEX/MATCH formulas exist on the source sheet
+- If the skill file documents a row identification system, confirm all row
+  identifiers are unique across the workbook
+- Confirm all lookup values referenced in cross-sheet formulas exist on the
+  target sheet
 
 ### 6h. Macro linkage integrity
 - Confirm every wired macro row references the correct series and lag
@@ -483,11 +536,16 @@ BS Check row = 0 for every column (tolerance ±0.2).
   row. Flag any formula that contains a hardcoded assumption.
 
 ### 6j. Phase 3b structure implementation
-- Verify that the segment forecast driver sections implement the exact structure
-  agreed in Phase 3b — every driver row that was agreed must exist and be
-  populated with formulas for all forecast periods
-- Verify that summary/dependent zone forecast cells reference the driver section
-  outputs, not independent forecast logic
+Read `[TICKER]/forecast-structure.yml` and verify the model implements it:
+- Every driver row listed in the file must exist in the model with a
+  populated formula for all forecast periods
+- The formula logic for each row must match what the file specifies (e.g.
+  if the file says "DT Count × DT AUV + Strip Count × Strip AUV", the
+  formula must reference those rows, not use a generic growth rate)
+- No segment forecast row should use a simple PCP growth rate if the file
+  specifies a bottom-up build (count × price, margin × revenue, etc.)
+- Summary/dependent rows must reference the driver section outputs, not
+  contain independent forecast logic
 
 ### 6k. Formatting integrity
 - Verify all actual data cells have the correct font color (per skill file Color
@@ -504,10 +562,10 @@ BS Check row = 0 for every column (tolerance ±0.2).
 
 ### 6l. Cross-sheet structural correspondence
 - If the skill file documents structural correspondence between sheets (e.g. two
-  sheets sharing the same P&L line items), extract the Column A keys from both
+  sheets sharing the same P&L line items), extract the row identifiers from both
   sheets' corresponding sections and confirm they are identical in content and
   order
-- Flag any key present on one sheet but missing from the other
+- Flag any identifier present on one sheet but missing from the other
 
 ---
 
@@ -525,3 +583,9 @@ BS Check row = 0 for every column (tolerance ±0.2).
    `.claude/references/context-log-template.md` if it does not exist
 7. Suggest next steps: review forecast assumptions in Excel, refine segment drivers,
    provide any missing macro data, confirm any outstanding macro relationships
+8. Prompt the user with next actions:
+   - **To validate this model against the template:** run `/validate-model`
+   - **To save these build decisions as a test fixture** (for automated re-testing
+     later): run `/save-fixture`
+   - **To build a model for another company** using the same template: run
+     `/build-model [TICKER]`

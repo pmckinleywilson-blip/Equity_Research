@@ -249,3 +249,6 @@ Incorporate feedback, then:
 1. Use the skill destination chosen in Step 0b (the directory already exists)
 2. Write the final skill file to `.claude/skills/[skill-name]/SKILL.md`
 3. Confirm to the user that the file has been written and provide the full path
+4. Prompt the user with the next step:
+   - **To build a model using this template:** run `/build-model [TICKER]`
+     where `[TICKER]` is the company ticker with exchange suffix (e.g. BHP.AX)

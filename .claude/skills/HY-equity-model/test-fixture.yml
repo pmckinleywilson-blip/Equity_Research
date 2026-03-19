@@ -1,0 +1,187 @@
+template: HY_model_template.xlsx
+skill: HY-equity-model
+
+ingest:
+  frequency: half-year
+  retain_all_analytical: true
+  retain_all_valuations: true
+
+build:
+  company:
+    name: Guzman y Gomez Limited
+    ticker: GYG.AX
+    exchange: ASX
+    fiscal_year_end: 30 June
+    currency: AUD
+    start_period: FY23
+    macro_indicators: none
+
+  source_documents:
+    # Primary documents used for data extraction
+    - GYG 2025-08-22 2025 GYG Full Year Report and Appendix 4E.pdf
+    - GYG 2025-08-22 2025 GYG Full Year Results Presentation and Script.pdf
+    - GYG 2026-02-20 Appendix 4D and 2026 GYG Half-Year Report.pdf
+    - GYG 2026-02-20 2026 GYG Half-Year Results Presentation.pdf
+    # Supplementary for FY23 comparatives and 1H24 data
+    - GYG 2024-08-27 2024 Annual Report (including Appendix 4E).pdf
+    - GYG 2025-02-21 2025 GYG Appendix 4D and Half-Year Report.pdf
+
+  segments:
+    - name: Australia
+      includes:
+        - Australian corporate restaurants
+        - Australian franchise restaurants (royalty and other revenue)
+        - Singapore franchise restaurants
+        - Japan franchise restaurants
+      depth: Segment Underlying EBITDA
+      kpis:
+        - Corporate restaurant count
+        - Franchise restaurant count (Australia)
+        - Franchise restaurant count (Asia)
+        - Australia network sales
+        - Comp sales growth
+        - Corporate restaurant margin %
+        - Franchise royalty rate (implied)
+        - G&A % of network sales
+        - Segment EBITDA % of network sales
+        - AUV by format (Drive Thru, Strip)
+        - Network restaurant margin by format
+        - Daypart mix (breakfast %, after 9pm %)
+        - Channel mix (delivery %, owned digital %)
+        - 24/7 trading restaurants
+
+    - name: US
+      includes:
+        - US corporate restaurants
+        - US franchise operations (minimal)
+        - US G&A
+      depth: Segment Underlying EBITDA
+      kpis:
+        - US restaurant count
+        - US network sales
+        - US corporate restaurant margin %
+        - US G&A
+
+  forecast_drivers:
+    Australia:
+      restaurant_counts:
+        - "Corporate Restaurants (closing) = prior + Net New Corporate"
+        - "Net New Corporate: assumption input per half (~6)"
+        - "Franchise Restaurants = prior + 5 per half (hardcoded, needs assumption row)"
+      revenue_build:
+        - "Corp Revenue = PCP × (1 + Corp Revenue Growth %)"
+        - "Corp Revenue Growth %: maroon assumption, rolls forward from PCP"
+        - "Corp AUV = annualised: Corp Revenue × 2 / avg Corp Restaurants"
+        - "Franchise Revenue = PCP × (1 + Corp Revenue Growth %) [grows at same rate as corp]"
+        - "Total Segment Revenue = Corp Revenue + Franchise Revenue"
+      ebitda_derivation:
+        - "EBITDA / Segment Revenue ratio: maroon assumption, rolls from PCP"
+        - "Segment Underlying EBITDA = Total Segment Revenue × EBITDA/SegRev ratio"
+      agreed_but_deferred:
+        - "Format-level build (DT/Strip/Other restaurants × AUV by format → network sales) was agreed in Phase 3b but deferred to refinement. Current build uses blended corp AUV approach."
+
+    US:
+      restaurant_counts:
+        - "US Restaurants (closing) = prior + Net New US"
+        - "Net New US: assumption input (~1 per half)"
+      revenue_build:
+        - "US Revenue = PCP × (1 + US Revenue Growth %)"
+        - "US Revenue Growth %: maroon assumption"
+        - "US AUV: analytical = Revenue × 2 / avg restaurants"
+      ebitda_derivation:
+        - "US Segment EBITDA: flat roll-forward from PCP (simplified)"
+
+  group_level:
+    revenue:
+      - "Corp Restaurant Sales - Australia: from Aus driver"
+      - "Corp Restaurant Sales - US: from US driver"
+      - "Franchise Royalty Revenue: from Aus driver (franchise revenue component)"
+      - "Franchise Fee Revenue: flat from PCP"
+    other_revenue:
+      - "Marketing Levy Revenue: grows with revenue"
+      - "Other Franchise Revenue: grows with revenue"
+      - "Other Income: zero in forecast"
+    cogs: "Not separately modelled — embedded in corporate restaurant margin at segment level"
+    expenses:
+      - "Cost of Food & Packaging"
+      - "Employee Benefit Expenses"
+      - "Administrative Expenses"
+      - "Marketing Expenses"
+      - "Other Expenses"
+    ebitda_approach: segment_driven
+    ebitda_bridge: "Aus Seg EBITDA + US Seg EBITDA + Cash Rent Addback + SBP + Other = Statutory EBITDA"
+    expense_forecast_method: "Back-solved as residuals from EBITDA. Total = Revenue & Other Income - EBITDA. Individual lines allocated proportionally from PCP mix."
+    da_components:
+      - "Depreciation - ROU Assets"
+      - "Depreciation - PPE"
+      - "Amortisation - Reacquired Rights"
+      - "Amortisation - Other"
+    da_forecast_method: "Total D&A = Revenue × D&A/Revenue ratio (flat from PCP). Split proportionally by PCP mix."
+    finance_components:
+      income:
+        - "Interest Income - Term Deposits"
+        - "Interest Income - Lease Receivables"
+        - "Other Finance Income"
+      costs:
+        - "Finance Costs - Lease Liabilities"
+        - "Other Finance Costs"
+    finance_forecast_method: "Flat roll-forward from PCP. Should be linked to BS balances × rate assumptions (open item)."
+    company_specific_bs_items:
+      - "Funds in Term Deposits (BS-Term Deposits): major item ~A$242m FY25, separate from operating cash"
+      - "Finance Lease Receivables (BS-Finance Lease Recv): A$175m FY25, franchise sublease receivables"
+      - "No banking debt since FY24"
+      - "Lease Liabilities: A$331m FY25, largest liability"
+
+  decisions:
+    - "P&L uses Segment EBITDA Bridge structure, not traditional Revenue/COGS/GP/OpEx."
+    - "EBITDA key = 'EBITDA-Statutory EBITDA' (bridges from segment underlying EBITDA to statutory via Cash Rent, SBP, Other)."
+    - "Statutory expense lines (food, employees, admin, marketing, other) are back-solved residuals of the segment-driven EBITDA — they do not have independent growth assumptions."
+    - "Forecast tax rate = 30% statutory (actual ETR ~45-50% driven by non-deductible SBP and unrecognised US tax losses; expected to normalise)."
+    - "SOTP uses Australia (25x) and US (15x) segment EBITDA multiples as placeholders."
+    - "Segment EBITDA derived as Total Segment Revenue × EBITDA/Segment Revenue margin, NOT EBITDA/Network Sales (network sales not modelled in initial build)."
+    - "Franchise restaurant growth hardcoded at +5 per half in row 93 — needs dedicated assumption row."
+    - "Lease principal repayment = Prior lease liability balance / 8 (approx 8yr avg lease life per FY25 annual report)."
+    - "Dividends in CF are lagged 1 year (prior year's declared dividend paid in current year)."
+    - "Term deposit movements classified in Other CFI (row 163)."
+    - "Lease incentives classified in Other CFF (row 171)."
+    - "2 rows inserted at Annual row 108 for Term Deposits and Finance Lease Receivables — all rows below 107 shifted +2 from template positions."
+    - "No NCI row — GYG has no minority interests."
+    - "No Significant Items / Statutory NPAT distinction — GYG reports a single NPAT line."
+
+validation:
+  annual_actuals:
+    - FY23
+    - FY24
+    - FY25
+  hy_actuals:
+    - 1H24
+    - 2H24
+    - 1H25
+    - 2H25
+    - 1H26
+  forecast_start_annual: FY26E
+  forecast_start_hy: 2H26E
+
+  limitations:
+    - "FY23 HY split not available — 1H23/2H23 columns blank on HY sheet (pre-IPO, no half-year reporting)"
+    - "1H26 D&A includes A$1.3m PPE impairment classified under Amortisation Other"
+    - "CF reconciliation has minor rounding differences vs reported CFS due to lease cash flow reclassification between OCF and CFF"
+    - "US segment forecast is simplified (flat EBITDA from PCP) — needs manual trajectory adjustment"
+    - "Finance income/costs use flat PCP roll-forward instead of BS balance × rate linkage"
+    - "Format-level revenue build (DT/Strip/Other) deferred — initial build uses blended approach"
+
+  expected_rows:
+    Annual: "197 (195 original + 2 inserted for Term Deposits and Finance Lease Recv)"
+    HY_Segments: "106"
+    Value: "68"
+
+  ratio_checks:
+    # Historical range for FY23-FY25 actuals
+    revenue_growth_pct: [0.20, 0.35]
+    ebitda_margin_statutory_pct: [0.07, 0.16]
+    aus_seg_ebitda_pct_ns: [0.04, 0.07]
+    corp_restaurant_margin_pct: [0.14, 0.19]
+    franchise_royalty_rate_pct: [0.07, 0.09]
+    da_over_revenue_pct: [0.08, 0.11]
+    capex_over_revenue_pct: [0.09, 0.16]
+    effective_tax_rate_pct: [0.30, 0.55]
