@@ -18,8 +18,8 @@ Save the build decisions for: $ARGUMENTS
 2. Identify which skill file was used — check `.claude/skills/` for the skill
    that corresponds to the template used.
 3. Check if a test fixture already exists at
-   `.claude/skills/[skill-name]/test-fixture.yml`. If it does, ask the user
-   whether to overwrite or keep the existing one.
+   `.claude/skills/[skill-name]/test-fixture-[TICKER].yml`. If it does, ask the
+   user whether to overwrite or keep the existing one.
 
 ---
 
@@ -129,7 +129,7 @@ validation:
 
 ## Step 4 — Write and confirm
 
-1. Write the fixture to `.claude/skills/[skill-name]/test-fixture.yml`
+1. Write the fixture to `.claude/skills/[skill-name]/test-fixture-[TICKER].yml`
 2. Confirm to the user: "Test fixture saved to [path]. This captures the
    build decisions for [TICKER] so that future builds can be automatically
    tested."

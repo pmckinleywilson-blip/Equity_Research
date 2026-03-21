@@ -1,0 +1,202 @@
+template: HY_model_template_NEW.xlsx
+skill: HY-equity-model-new
+
+ingest:
+  frequency: half-year
+  retain_all_analytical: true
+  retain_all_valuations: true
+
+build:
+  company:
+    name: Guzman y Gomez Limited
+    ticker: GYG.AX
+    exchange: ASX
+    fiscal_year_end: 30-Jun
+    currency: AUD
+    start_period: FY23
+    macro_indicators: none
+
+  source_documents:
+    # Primary sources (most recent full year + most recent interim)
+    - GYG 2025-08-22 2025 GYG Full Year Report and Appendix 4E.pdf
+    - GYG 2025-08-22 2025 GYG Full Year Results Presentation and Script.pdf
+    - GYG 2026-02-20 Appendix 4D and 2026 GYG Half-Year Report.pdf
+    - GYG 2026-02-20 2026 GYG Half-Year Results Presentation.pdf
+    # Secondary sources (prior year comparatives)
+    - GYG 2024-08-27 2024 Annual Report (including Appendix 4E).pdf
+    - GYG 2024-08-27 2024 Full Year Results Briefing Presentation.pdf
+    - GYG 2025-02-21 2025 GYG Appendix 4D and Half-Year Report.pdf
+    - GYG 2025-02-21 2025 GYG Half-Year Results Briefing Presentation.pdf
+
+  segments:
+    - name: Australia
+      includes:
+        - Australian corporate restaurants
+        - Franchise royalty and other revenue from AU, Singapore, and Japan
+        - G&A costs for AU operations
+      depth: Segment Underlying EBITDA
+      kpis:
+        - Restaurant count by format (Drive-Thru, Strip, Other)
+        - Restaurant count by ownership (Corporate, Franchise)
+        - Network sales by geography (AU Corporate, AU Franchise, Singapore, Japan)
+        - Comp sales growth (Australia)
+        - Corporate restaurant margin %
+        - Implied franchise royalty rate %
+        - G&A costs as % of network sales
+        - Segment underlying EBITDA as % of network sales
+        - AUV by format (Drive-Thru, Strip)
+        - Restaurant margin by format
+
+    - name: US
+      includes:
+        - US corporate restaurants
+        - US franchise/management agreement revenue (small)
+        - US above-restaurant G&A costs
+      depth: Segment Underlying EBITDA
+      kpis:
+        - Restaurant count
+        - Network sales
+        - Corporate restaurant margin %
+        - G&A costs
+        - Comp sales growth (US, from Q4 FY25)
+
+  forecast_drivers:
+    Australia:
+      network_revenue_build:
+        - DT Restaurant Count: prior + New DT Openings
+        - New DT Openings: flatline from PCP (assumption, maroon)
+        - DT AUV ($m): prior PCP × (1 + DT AUV Growth)
+        - DT AUV Growth %: flatline from PCP (assumption, maroon)
+        - DT Network Sales: DT Count × DT AUV / 2 (half-year)
+        - Non-DT Restaurant Count: prior + New Non-DT Openings (Strip + Other combined)
+        - New Non-DT Openings: flatline from PCP (assumption, maroon)
+        - Non-DT AUV ($m): prior PCP × (1 + Non-DT AUV Growth)
+        - Non-DT AUV Growth %: flatline from PCP (assumption, maroon)
+        - Non-DT Network Sales: Non-DT Count × Non-DT AUV / 2
+        - AU Network Sales: DT NS + Non-DT NS
+        - Asia Network Sales: prior PCP × (1 + Asia NS Growth)
+        - Asia NS Growth %: flatline from PCP (assumption, maroon)
+        - Total Segment Network Sales: AU NS + Asia NS
+      corporate_revenue_build:
+        - Corp Restaurant Count: prior + New Corp Openings
+        - New Corp Openings: flatline from PCP (assumption, maroon)
+        - Corp Sales / AU NS %: flatline from PCP (assumption, maroon, ~33%)
+        - Corp Restaurant Sales: AU Network Sales × Corp Sales / NS %
+      margin_and_ebitda:
+        - Corp Restaurant Margin %: flatline from PCP (assumption, maroon)
+        - Corp Margin $: Corp Sales × Margin %
+        - Implied Franchise Royalty Rate %: flatline from PCP (assumption, maroon)
+        - Franchise & Other Revenue: (Total Seg NS - Corp Sales) × Royalty Rate
+        - G&A as % of Network Sales: flatline from PCP (assumption, maroon)
+        - G&A Costs: -Total Seg NS × G&A % (negative)
+        - AU Segment Underlying EBITDA: Corp Margin + Franchise Rev + G&A Costs
+
+    US:
+      revenue_build:
+        - US Corp Restaurant Count: prior + New US Openings
+        - New US Openings: flatline from PCP (assumption, maroon)
+        - US Corp AUV ($m): prior PCP × (1 + US AUV Growth)
+        - US AUV Growth %: flatline from PCP (assumption, maroon)
+        - US Corp Restaurant Sales: Count × AUV / 2
+        - US Corp Restaurant Margin %: flatline from PCP (assumption, maroon)
+        - US Corp Margin $: Sales × Margin %
+        - US Franchise & Other Revenue: flatline from PCP
+        - US G&A Costs: prior PCP × (1 + US G&A Growth)
+        - US G&A Growth %: flatline from PCP (assumption, maroon)
+        - US Segment Underlying EBITDA: Corp Margin + Franchise Rev + G&A
+
+  group_level:
+    revenue:
+      - AU Corporate Restaurant Sales (from AU segment Corp Restaurant Sales)
+      - US Corporate Restaurant Sales (from US segment Corp Restaurant Sales)
+      - Franchise Royalty Revenue (from segment: (Seg NS - Corp Sales) × Royalty Rate)
+      - Franchise Fee Revenue (flatline from PCP)
+    other_revenue:
+      - Franchise Marketing Levy Revenue (~5% growth from PCP)
+      - Other Franchise Related Revenue (~5% growth from PCP)
+      - Other Income (=0 for forecast, one-off disposal gains)
+    cogs: not applicable (GYG reports expenses by nature, not by function)
+    expenses:
+      - Cost of Food & Packaging
+      - Employee Benefit Expenses
+      - Administrative Expenses
+      - Marketing Expenses
+      - Other Expenses
+    ebitda_approach: segment_driven
+    ebitda_bridge: >
+      Group Segment Underlying EBITDA (AU + US)
+      + Share-Based Payments (growth from PCP)
+      + Other Adjustments (=0 for forecast)
+      + Cash Rent Addback (~10% growth with network)
+      = Statutory EBITDA
+    expense_forecast_method: >
+      Total Expenses = Statutory EBITDA - Total Revenue & Other Income (back-solved).
+      Individual expense lines split proportionally based on PCP ratios.
+    da_components:
+      - ROU Asset Depreciation
+      - PPE Depreciation
+      - Amortisation of Reacquired Rights
+      - Amortisation of Other Intangibles
+    finance_components:
+      income:
+        - Interest on Term Deposits
+        - Interest on Lease Receivables
+      costs:
+        - Interest on Lease Liabilities
+        - Other Finance Costs
+    company_specific_bs_items:
+      - Term Deposits (separate from Cash, material ~$240m balance earning ~4% interest)
+      - Finance Lease Receivables (franchise sublease assets, ~$175-193m, earning ~6% IBR)
+      - Lease Liabilities (~$330-370m, growing with network expansion)
+      - No banking debt (zero debt company)
+      - Share buyback program (Issued Capital declining in FY26)
+      - Income tax payable included in Other Liabilities line
+
+  decisions:
+    - Two segments (Australia incl SG/JP, US) matching company operating segment reporting
+    - Format decomposition (DT vs Non-DT) for AU network sales to capture format mix shift
+    - Non-DT combines Strip + Other formats (Other is small at ~38 restaurants, declining)
+    - Revenue build uses network Count × AUV by format, then Corp Share % to derive Corp Sales
+    - Segment EBITDA is primary forecast driver; statutory expenses are back-solved residuals
+    - Tax rate 30% statutory for all forecast periods (user instruction), despite actual ~45-50%
+    - Cash rent addback is the AASB 16 impact (ROU Depr + Lease Interest - Cash Rent)
+    - AUV data is network-level (corp + franchise combined) as company does not report by ownership
+    - 1H period = Jul-Dec, 2H period = Jan-Jun (June fiscal year-end)
+    - SBP is non-cash and excluded from segment EBITDA, added back in the statutory bridge
+    - "Other Adjustments" captures one-off items (IPO costs FY24, disposal gains FY25/1H26)
+
+validation:
+  annual_actuals:
+    - FY23A
+    - FY24A
+    - FY25A
+  hy_actuals:
+    - 1H24
+    - 2H24
+    - 1H25
+    - 2H25
+    - 1H26
+  forecast_start_annual: FY26E
+  forecast_start_hy: 2H26E
+  limitations:
+    - DT/Non-DT restaurant count history pre-FY25 is estimated (only FY25 and 1H26 format data reported)
+    - FY23 Other Revenue breakdown (Marketing Levy vs Other Franchise) estimated proportionally
+    - FY25 Franchise Royalty/Fee split estimated (exact split not separately disclosed in FY25 report)
+    - 1H24 franchise royalty estimated from FY24 total (~50% split)
+    - 1H24 expense breakdown from 1H25 report comparative (labelled as "31 December 2023")
+    - 2H24 and 2H25 statutory P&L derived as FY minus 1H (not independently reported)
+    - US AUV shows declining trend from new restaurant dilution — may not represent steady-state
+    - Finance income on Annual sheet consolidated (HY splits TD vs Lease Receivable interest)
+    - Cash rent addback forecast uses simple ~10% growth — should ideally derive from lease balances
+    - Segment "Franchise & Other Revenue" includes royalty, fees, and other franchise revenue combined
+  expected_rows:
+    Annual: 5-186
+    HY & Segments: 5-137
+  ratio_checks:
+    au_corp_margin_pct: [0.14, 0.22]
+    au_implied_royalty_rate: [0.07, 0.10]
+    au_ga_pct_of_ns: [0.05, 0.08]
+    au_seg_ebitda_pct_ns: [0.03, 0.10]
+    da_pct_revenue: [0.06, 0.12]
+    statutory_ebitda_margin: [0.05, 0.20]
+    capex_pct_sales: [-0.20, -0.03]

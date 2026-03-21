@@ -357,7 +357,12 @@ items, their order, and their row identifiers must remain consistent across
 corresponding sheets.
 
 When inserting new rows, copy formatting from an adjacent template row of the
-same type. When mapping company line items to template rows, use the most
+same type. Formatting (bold, borders, fills, number formats, font colors)
+must be applied to EVERY data column cell in the row, not just the label
+cell in column B. A subtotal row with bold on the label but not on data
+cells is incorrect — all cells across the row must share the same formatting.
+Similarly, section header fills and zone label fills must extend across all
+data columns. When mapping company line items to template rows, use the most
 semantically appropriate dedicated row. Route to Other rows only where no
 dedicated row is a reasonable match. Flag any material items that warrant a new
 dedicated row — confirm with user before adding.

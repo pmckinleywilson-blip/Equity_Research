@@ -2,7 +2,9 @@
 description: >
   Automated test loop: rebuild a model from template using saved fixture
   decisions, validate against template, diagnose issues, and suggest fixes
-  to the ingest-model or build-model commands. Run: /test-build [skill-name]
+  to the ingest-model or build-model commands.
+  Run: /test-build [skill-name] [TICKER]
+  If TICKER is omitted and multiple fixtures exist, you will be prompted to choose.
 ---
 
 # /test-build
@@ -14,10 +16,16 @@ Run the automated test loop for skill: $ARGUMENTS
 ## Step 1 — Load prerequisites
 
 1. Load the skill file from `.claude/skills/[skill-name]/SKILL.md`
-2. Load the test fixture from `.claude/skills/[skill-name]/test-fixture.yml`.
-   If no fixture exists, stop and tell the user: "No test fixture found.
-   Run `/build-model [TICKER]` to build a model interactively, then
-   `/save-fixture [TICKER]` to capture the decisions."
+2. Locate the test fixture:
+   - If a TICKER was provided as the second argument, load
+     `.claude/skills/[skill-name]/test-fixture-[TICKER].yml`
+   - If no TICKER was provided, scan for all `test-fixture-*.yml` files in
+     `.claude/skills/[skill-name]/`
+   - If exactly one fixture exists, use it automatically
+   - If multiple fixtures exist, list them and ask the user to choose
+   - If no fixtures exist, stop and tell the user: "No test fixtures found.
+     Run `/build-model [TICKER]` to build a model interactively, then
+     `/save-fixture [TICKER]` to capture the decisions."
 3. Read the template file path from the skill file's Template Reference.
 4. Read the test company's ticker and details from the fixture.
 5. Confirm to the user: "Ready to test [skill-name] using [TICKER] as the
