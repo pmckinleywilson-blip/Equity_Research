@@ -59,3 +59,7 @@ Each ticker folder contains:
 - Flag any assumptions explicitly — distinguish between hard data and inferred values.
 - If data appears inconsistent or incomplete, raise it rather than working around it silently.
 - Never guess. If any input, assumption, or formula is unclear, ask before making changes.
+
+## Sub-Agent Model
+
+- When spawning sub-agents, always use `model: "opus"`.
