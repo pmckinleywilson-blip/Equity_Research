@@ -1,0 +1,36 @@
+name: Hourly Detection Scrape
+
+on:
+  schedule:
+    - cron: "17 * * * *"  # Every hour at :17 (offset to avoid congestion)
+  workflow_dispatch:
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r sp500-events/backend/requirements.txt
+
+      - name: Run detection scrapers
+        working-directory: sp500-events/scrapers
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+          SEC_EDGAR_USER_AGENT: ${{ secrets.SEC_EDGAR_USER_AGENT }}
+        run: python earnings_calendars.py
+
+      - name: Run press release monitoring
+        working-directory: sp500-events/scrapers
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python press_releases.py

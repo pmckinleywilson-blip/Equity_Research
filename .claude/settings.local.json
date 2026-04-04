@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:www.businesswire.com)",
+      "WebFetch(domain:api.nasdaq.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:www.knowntrends.com)",
+      "WebFetch(domain:studioapi.q4inc.com)",
+      "WebFetch(domain:www.globenewswire.com)",
+      "WebFetch(domain:www.nyse.com)",
+      "WebFetch(domain:www.wallstreethorizon.com)",
+      "WebFetch(domain:abc.xyz)",
+      "WebFetch(domain:investor.mastercard.com)",
+      "WebFetch(domain:nvidianews.nvidia.com)",
+      "WebFetch(domain:www.prnewswire.com)",
+      "WebFetch(domain:9to5mac.com)",
+      "WebFetch(domain:site.financialmodelingprep.com)"
+    ]
+  }
+}

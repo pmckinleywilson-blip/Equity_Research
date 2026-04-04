@@ -1,0 +1,58 @@
+name: Daily IR Verification + Full Pipeline
+
+on:
+  schedule:
+    - cron: "42 6 * * *"   # 6:42 AM UTC (before US market open)
+    - cron: "42 22 * * *"  # 10:42 PM UTC (after US market close)
+  workflow_dispatch:
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r sp500-events/backend/requirements.txt
+
+      - name: Run full pipeline (detect + verify + notify)
+        working-directory: sp500-events/scrapers
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+          SEC_EDGAR_USER_AGENT: ${{ secrets.SEC_EDGAR_USER_AGENT }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          INVITE_FROM_EMAIL: ${{ secrets.INVITE_FROM_EMAIL }}
+          SITE_URL: ${{ secrets.SITE_URL }}
+        run: python pipeline.py --days 90
+
+  update-tickers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Only run ticker update once a week (Monday)
+    if: github.event.schedule == '42 6 * * *'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r sp500-events/backend/requirements.txt
+
+      - name: Update company list
+        working-directory: sp500-events/scrapers
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python tickers.py
